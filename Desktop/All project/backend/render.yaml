@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: crypto-backend
+    env: python
+    plan: free
+    pythonVersion: 3.11
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: python manage.py migrate --no-input --verbosity 2
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 300 config.wsgi:application
