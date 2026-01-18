@@ -1,0 +1,216 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .dashboard-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 1.5rem;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    .stat-card.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-card.success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .stat-card.warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .stat-card.info { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .stat-card.danger { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
+    }
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .dashboard-section {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .dashboard-section h2 {
+        margin-top: 0;
+        color: #333;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 0.5rem;
+    }
+    .recent-item {
+        padding: 0.75rem;
+        border-bottom: 1px solid #eee;
+    }
+    .recent-item:last-child {
+        border-bottom: none;
+    }
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+    .badge-success { background: #d4edda; color: #155724; }
+    .badge-warning { background: #fff3cd; color: #856404; }
+    .badge-danger { background: #f8d7da; color: #721c24; }
+    .badge-info { background: #d1ecf1; color: #0c5460; }
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .action-btn {
+        display: block;
+        padding: 1rem;
+        background: #667eea;
+        color: white;
+        text-align: center;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: background 0.2s;
+    }
+    .action-btn:hover {
+        background: #5568d3;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h1>Admin Dashboard</h1>
+    
+    <!-- Statistics Cards -->
+    <div class="dashboard-stats">
+        <div class="stat-card primary">
+            <div class="stat-label">Total Users</div>
+            <div class="stat-value">{{ total_users }}</div>
+            <div class="stat-label">+{{ new_users_24h }} today</div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-label">Verified Users</div>
+            <div class="stat-value">{{ verified_users }}</div>
+            <div class="stat-label">{{ pending_kyc }} pending KYC</div>
+        </div>
+        <div class="stat-card info">
+            <div class="stat-label">Total Transactions</div>
+            <div class="stat-value">{{ total_transactions }}</div>
+            <div class="stat-label">{{ pending_transactions }} pending</div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-label">Open Tickets</div>
+            <div class="stat-value">{{ open_tickets }}</div>
+            <div class="stat-label">{{ urgent_tickets }} urgent</div>
+        </div>
+        <div class="stat-card danger">
+            <div class="stat-label">Total Volume (₵)</div>
+            <div class="stat-value">₵{{ total_volume_cedis|floatformat:2 }}</div>
+            <div class="stat-label">₵{{ volume_24h|floatformat:2 }} last 24h</div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-label">Total Wallets</div>
+            <div class="stat-value">{{ total_wallets }}</div>
+            <div class="stat-label">₵{{ total_escrow|floatformat:2 }} in escrow</div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="dashboard-section">
+        <h2>Quick Actions</h2>
+        <div class="quick-actions">
+            <a href="{% url 'custom_admin:authentication_user_changelist' %}" class="action-btn">Manage Users</a>
+            <a href="{% url 'custom_admin:wallets_cryptotransaction_changelist' %}" class="action-btn">View Transactions</a>
+            <a href="{% url 'custom_admin:kyc_kycverification_changelist' %}" class="action-btn">Review KYC</a>
+            <a href="{% url 'custom_admin:support_supportticket_changelist' %}" class="action-btn">Support Tickets</a>
+            <a href="{% url 'custom_admin:orders_giftcardorder_changelist' %}" class="action-btn">Gift Card Orders</a>
+            <a href="{% url 'custom_admin:marketing_testimonial_changelist' %}" class="action-btn">Testimonials</a>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+        <!-- Recent Transactions -->
+        <div class="dashboard-section">
+            <h2>Recent Transactions</h2>
+            {% for transaction in recent_transactions %}
+            <div class="recent-item">
+                <strong>{{ transaction.user.email }}</strong><br>
+                <span>{{ transaction.type|upper }} - ₵{{ transaction.cedis_amount|floatformat:2 }}</span><br>
+                <span class="badge badge-{{ transaction.status }}">{{ transaction.status }}</span>
+                <span style="float: right; color: #666; font-size: 0.85rem;">{{ transaction.created_at|timesince }} ago</span>
+            </div>
+            {% empty %}
+            <p>No recent transactions</p>
+            {% endfor %}
+        </div>
+
+        <!-- Recent Support Tickets -->
+        <div class="dashboard-section">
+            <h2>Recent Support Tickets</h2>
+            {% for ticket in recent_tickets %}
+            <div class="recent-item">
+                <strong>{{ ticket.subject }}</strong><br>
+                <span>{{ ticket.user.email }}</span><br>
+                <span class="badge badge-{{ ticket.status }}">{{ ticket.status }}</span>
+                <span class="badge badge-{{ ticket.priority }}">{{ ticket.priority }}</span>
+                <span style="float: right; color: #666; font-size: 0.85rem;">{{ ticket.created_at|timesince }} ago</span>
+            </div>
+            {% empty %}
+            <p>No recent tickets</p>
+            {% endfor %}
+        </div>
+
+        <!-- Recent KYC Submissions -->
+        <div class="dashboard-section">
+            <h2>Recent KYC Submissions</h2>
+            {% for kyc in recent_kyc %}
+            <div class="recent-item">
+                <strong>{{ kyc.user.email }}</strong><br>
+                <span>{{ kyc.document_type|title }}</span><br>
+                <span class="badge badge-{{ kyc.status }}">{{ kyc.status }}</span>
+                <span style="float: right; color: #666; font-size: 0.85rem;">{{ kyc.submitted_at|timesince }} ago</span>
+            </div>
+            {% empty %}
+            <p>No recent KYC submissions</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Additional Statistics -->
+    <div class="dashboard-section">
+        <h2>Platform Statistics</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div>
+                <strong>Gift Card Orders:</strong><br>
+                <span>{{ total_gift_orders }} total, {{ pending_gift_orders }} pending</span>
+            </div>
+            <div>
+                <strong>Tutorials:</strong><br>
+                <span>{{ total_tutorials }} total, {{ published_tutorials }} published</span>
+            </div>
+            <div>
+                <strong>Testimonials:</strong><br>
+                <span>{{ total_testimonials }} total, {{ featured_testimonials }} featured</span>
+            </div>
+            <div>
+                <strong>Support Tickets:</strong><br>
+                <span>{{ total_tickets }} total, {{ resolved_tickets_7d }} resolved this week</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,2 @@
+"""Marketing app migrations."""
+
