@@ -84,50 +84,75 @@ class AuthViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def register(self, request):
         """Register a new user and return JWT tokens"""
-        logger.info(f"Registration attempt from IP: {request.META.get('REMOTE_ADDR')}")
-        serializer = RegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
+        try:
+            logger.info(f"Registration attempt from IP: {request.META.get('REMOTE_ADDR')}")
+            logger.info(f"Registration data: {request.data}")
             
-            # Create wallet for the user
-            from wallets.models import Wallet
-            Wallet.objects.create(user=user)
-            
-            # Generate tokens
-            refresh = RefreshToken.for_user(user)
-            
-            # Update user's last_seen immediately when they register (they're logged in)
-            user.last_seen = timezone.now()
-            user.save(update_fields=['last_seen'])
-            
-            logger.info(f"User registered successfully: {user.email}")
-            
-            response = Response({
-                'message': 'User registered successfully',
-                'user': UserSerializer(user).data,
-            }, status=status.HTTP_201_CREATED)
-            
-            # Set httpOnly cookies
-            response.set_cookie(
-                key='refresh_token',
-                value=str(refresh),
-                httponly=True,
-                secure=True,  # Set to True in production with HTTPS
-                samesite='Lax',
-                max_age=7*24*60*60  # 7 days
+            serializer = RegisterSerializer(data=request.data)
+            if serializer.is_valid():
+                try:
+                    user = serializer.save()
+                    logger.info(f"User created: {user.email}")
+                    
+                    # Create wallet for the user
+                    try:
+                        from wallets.models import Wallet
+                        wallet = Wallet.objects.create(user=user)
+                        logger.info(f"Wallet created for user: {user.email}")
+                    except Exception as wallet_error:
+                        logger.error(f"Failed to create wallet: {str(wallet_error)}", exc_info=True)
+                        # Continue registration even if wallet creation fails
+                    
+                    # Generate tokens
+                    refresh = RefreshToken.for_user(user)
+                    
+                    # Update user's last_seen immediately when they register (they're logged in)
+                    user.last_seen = timezone.now()
+                    user.save(update_fields=['last_seen'])
+                    
+                    logger.info(f"User registered successfully: {user.email}")
+                    
+                    response = Response({
+                        'message': 'User registered successfully',
+                        'user': UserSerializer(user).data,
+                        'access': str(refresh.access_token),
+                        'refresh': str(refresh),
+                    }, status=status.HTTP_201_CREATED)
+                    
+                    # Set httpOnly cookies
+                    response.set_cookie(
+                        key='refresh_token',
+                        value=str(refresh),
+                        httponly=True,
+                        secure=True,
+                        samesite='Lax',
+                        max_age=7*24*60*60  # 7 days
+                    )
+                    response.set_cookie(
+                        key='access_token',
+                        value=str(refresh.access_token),
+                        httponly=True,
+                        secure=True,
+                        samesite='Lax',
+                        max_age=60*60  # 1 hour
+                    )
+                    
+                    return response
+                except Exception as e:
+                    logger.error(f"Error during user creation: {str(e)}", exc_info=True)
+                    return Response(
+                        {'error': f'Registration failed: {str(e)}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                logger.warning(f"Registration validation failed: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Unexpected error in registration: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'An unexpected error occurred during registration'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-            response.set_cookie(
-                key='access_token',
-                value=str(refresh.access_token),
-                httponly=True,
-                secure=True,
-                samesite='Lax',
-                max_age=60*60  # 1 hour
-            )
-            
-            return response
-        logger.warning(f"Registration failed: {serializer.errors}")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @ratelimit(key='ip', rate='10/m', block=False)
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
