@@ -204,7 +204,7 @@ class CryptoTransactionViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_staff:
             return CryptoP2PTransaction.objects.all()
-        return CryptoP2PTransaction.objects.filter(
+        return (CryptoP2PTransaction.objects.filter(
             buyer=user) | CryptoP2PTransaction.objects.filter(seller=user)
         ).distinct()
     
