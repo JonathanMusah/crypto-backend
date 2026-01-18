@@ -297,52 +297,58 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': 'logs/django.log',
-            'formatter': 'verbose',
-        },
-        'json_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': 'logs/django_json.log',
-            'formatter': 'json',
-        },
     },
     'root': {
         'handlers': ['console'],
+        'level': 'INFO',
     },
     'loggers': {
         'django': {
-            'handlers': ['file', 'json_file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'authentication': {
-            'handlers': ['file', 'json_file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'wallets': {
-            'handlers': ['file', 'json_file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'orders': {
-            'handlers': ['file', 'json_file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'notifications': {
-            'handlers': ['file', 'json_file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'rates': {
-            'handlers': ['file', 'json_file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
     },
 }
+
+# Add file logging only in development
+if DEBUG:
+    LOGGING['handlers']['file'] = {
+        'level': 'INFO',
+        'class': 'logging.FileHandler',
+        'filename': 'logs/django.log',
+        'formatter': 'verbose',
+    }
+    LOGGING['handlers']['json_file'] = {
+        'level': 'INFO',
+        'class': 'logging.FileHandler',
+        'filename': 'logs/django_json.log',
+        'formatter': 'json',
+    }
+    for logger_name in ['django', 'authentication', 'wallets', 'orders', 'notifications', 'rates']:
+        LOGGING['loggers'][logger_name]['handlers'] = ['file', 'json_file']
