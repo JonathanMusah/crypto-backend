@@ -5,5 +5,5 @@ services:
     plan: free
     pythonVersion: 3.11
     buildCommand: pip install -r requirements.txt
-    startCommand: bash ./start.sh
+    startCommand: python manage.py migrate --no-input --verbosity 2 && python manage.py collectstatic --no-input && exec gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 300 --access-logfile - config.wsgi:application
 
