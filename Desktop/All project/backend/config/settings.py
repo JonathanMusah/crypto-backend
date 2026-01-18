@@ -92,7 +92,7 @@ INSTALLED_APPS.extend([
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'authentication.middleware.IPBanMiddleware',  # IP banning middleware (early in chain)
+    # 'authentication.middleware.IPBanMiddleware',  # DISABLED: Re-enable after migrations run
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
