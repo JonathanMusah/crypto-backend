@@ -40,18 +40,19 @@ if DEBUG:
     except ImportError:
         pass
 
-# ALLOWED_HOSTS - Allow Render domains, localhost, and custom domains
-# In production, always allow *.onrender.com
+# ALLOWED_HOSTS - Build dynamic list for Render
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    '*.onrender.com',  # Allow all Render subdomains
 ]
 
-# Add custom domains from env if provided
+# Add custom domains from env if provided, or allow all on production
 if env('ALLOWED_HOSTS', default=None):
     custom_hosts = env.list('ALLOWED_HOSTS')
     ALLOWED_HOSTS.extend(custom_hosts)
+elif not DEBUG:
+    # In production without explicit ALLOWED_HOSTS, allow all Render domains
+    ALLOWED_HOSTS.append('*')
 
 # Application definition
 INSTALLED_APPS = [
