@@ -129,25 +129,14 @@ class AuthViewSet(viewsets.ModelViewSet):
         logger.warning(f"Registration failed: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # Temporarily disabled rate limiting to debug 500 error
-    # @ratelimit(key='ip', rate='10/m', block=False)
+    @ratelimit(key='ip', rate='10/m', block=False)
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def login(self, request):
         """
-        Login user - Step 1: Verify password and send OTP via email.
-        User must verify OTP before being logged in.
+        Login user - OTP DISABLED FOR TESTING
+        Returns JWT tokens directly after password verification
         """
-        # Force output immediately
-        import sys
-        sys.stdout.write("\n[LOGIN DEBUG] Login endpoint called\n")
-        sys.stdout.flush()
-        sys.stderr.write("\n[LOGIN DEBUG] Login endpoint called (stderr)\n")
-        sys.stderr.flush()
-        print(f"[LOGIN DEBUG] Login endpoint called")
-        logger.warning(f"[LOGIN DEBUG] Login attempt from IP: {request.META.get('REMOTE_ADDR')}")
-        logger.error(f"[LOGIN DEBUG] Login endpoint called (ERROR level)")
         try:
-            print(f"[LOGIN DEBUG] Inside try block")
             serializer = LoginSerializer(data=request.data)
             if not serializer.is_valid():
                 logger.warning(f"Login validation failed: {serializer.errors}")
@@ -166,147 +155,48 @@ class AuthViewSet(viewsets.ModelViewSet):
                 )
             
             if user and user.is_active:
-                # Generate OTP and send via email
-                otp = None  # Initialize otp variable in outer scope
+                # OTP DISABLED - Generate tokens directly
                 try:
-                    otp, otp_obj = OTP.create_otp(user, expiration_minutes=5)
-                    # Print OTP immediately and clearly - use multiple methods
-                    import sys
-                    import os
+                    refresh = RefreshToken.for_user(user)
                     
-                    # FORCE UNBUFFERED OUTPUT
-                    sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, 'reconfigure') else None
-                    sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, 'reconfigure') else None
+                    # Update user's last_seen
+                    user.last_seen = timezone.now()
+                    user.save(update_fields=['last_seen'])
                     
-                    # VERY PROMINENT OTP DISPLAY - Use simple format that works everywhere
-                    otp_simple = f"\n\n{'='*80}\nOTP CODE FOR {user.email}: {otp}\n{'='*80}\n\n"
+                    logger.info(f"User logged in successfully: {user.email}")
                     
-                    # Print to console multiple times with different methods - FORCE IMMEDIATE OUTPUT
-                    print(otp_simple, flush=True, end='')
-                    print(otp_simple, file=sys.stdout, flush=True, end='')
-                    print(otp_simple, file=sys.stderr, flush=True, end='')
-                    sys.stdout.write(otp_simple)
-                    sys.stdout.flush()
-                    sys.stderr.write(otp_simple)
-                    sys.stderr.flush()
+                    response = Response({
+                        'message': 'Login successful',
+                        'user': UserSerializer(user).data,
+                        'access': str(refresh.access_token),
+                        'refresh': str(refresh),
+                    }, status=status.HTTP_200_OK)
                     
-                    # Also use logger at CRITICAL level
-                    logger.critical(otp_simple)
-                    logger.critical(f"OTP CODE: {otp}")
+                    # Set httpOnly cookies
+                    response.set_cookie(
+                        key='refresh_token',
+                        value=str(refresh),
+                        httponly=True,
+                        secure=True,
+                        samesite='Lax',
+                        max_age=7*24*60*60  # 7 days
+                    )
+                    response.set_cookie(
+                        key='access_token',
+                        value=str(refresh.access_token),
+                        httponly=True,
+                        secure=True,
+                        samesite='Lax',
+                        max_age=60*60  # 1 hour
+                    )
                     
-                    # Print multiple times to ensure visibility
-                    for i in range(5):
-                        print(f"\n!!! OTP CODE FOR {user.email}: {otp} !!!\n", flush=True)
-                        sys.stdout.write(f"\n!!! OTP CODE FOR {user.email}: {otp} !!!\n")
-                        sys.stdout.flush()
-                    
-                    # VERY PROMINENT OTP DISPLAY (formatted version)
-                    otp_display = f"""
-{'#'*80}
-{'#'*80}
-{'#'*80}
-{'#':<79}#
-{'#':<10}OTP CODE FOR {user.email:<40}#
-{'#':<10}CODE: {otp:<50}#
-{'#':<79}#
-{'#'*80}
-{'#'*80}
-{'#'*80}
-"""
-                    # Print formatted version too
-                    print(otp_display, flush=True)
-                    sys.stdout.write(otp_display)
-                    sys.stdout.flush()
-                    
-                    # Write to file as backup (in backend directory)
-                    try:
-                        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                        otp_file = os.path.join(backend_dir, 'otp_code.txt')
-                        with open(otp_file, 'w') as f:
-                            f.write(f"{'='*80}\n")
-                            f.write(f"OTP CODE FOR {user.email}\n")
-                            f.write(f"CODE: {otp}\n")
-                            f.write(f"Generated at: {timezone.now()}\n")
-                            f.write(f"{'='*80}\n")
-                        print(f"\n[LOGIN] OTP saved to file: {otp_file}\n")
-                        print(f"[LOGIN] Check the file: {otp_file} if you don't see the code above\n")
-                        sys.stdout.flush()
-                    except Exception as e:
-                        logger.error(f"Failed to write OTP to file: {str(e)}")
-                    
-                    # Logger - use all levels
-                    logger.critical(f"OTP CODE FOR {user.email}: {otp}")
-                    logger.error(f"OTP CODE FOR {user.email}: {otp}")
-                    logger.warning(f"OTP CODE FOR {user.email}: {otp}")
-                    logger.info(f"OTP CODE FOR {user.email}: {otp}")
+                    return response
                 except Exception as e:
-                    logger.error(f"Failed to create OTP for user {user.email}: {str(e)}", exc_info=True)
+                    logger.error(f"Failed to generate tokens for user {user.email}: {str(e)}", exc_info=True)
                     return Response(
-                        {'error': 'Failed to generate verification code. Please try again.'},
+                        {'error': 'Failed to generate authentication tokens. Please try again.'},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
-                
-                # Send OTP email (always use fail_silently=True to prevent blocking login)
-                try:
-                    # Check if email backend is configured
-                    email_backend = getattr(settings, 'EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-                    default_from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@cryptoplatform.com')
-                    
-                    logger.info(f"[LOGIN] Email backend: {email_backend}")
-                    logger.info(f"[LOGIN] Sending OTP email to {user.email} with code: {otp}")
-                    
-                    # Always use fail_silently=True to prevent email errors from blocking login
-                    send_mail(
-                        subject='Your Login Verification Code',
-                        message=f'Your verification code is: {otp}\n\nThis code will expire in 5 minutes.\n\nIf you did not request this code, please ignore this email.',
-                        from_email=default_from_email,
-                        recipient_list=[user.email],
-                        fail_silently=True,  # Don't fail login if email fails
-                    )
-                    
-                    if 'console' in email_backend.lower():
-                        logger.info(f"OTP sent to {user.email} (console backend - check terminal for code: {otp})")
-                        # Print OTP clearly
-                        print("\n" + "="*70)
-                        print(f"OTP CODE FOR {user.email}: {otp}")
-                        print("="*70 + "\n")
-                        print(f"[LOGIN] Email sent successfully. Code: {otp}")
-                        import sys
-                        sys.stdout.flush()
-                    else:
-                        logger.info(f"OTP sent to {user.email} via {email_backend}")
-                    
-                    # In DEBUG mode, include OTP in response for development convenience
-                    response_data = {
-                        'message': 'Verification code sent to your email',
-                        'email': user.email,
-                        'requires_otp': True  # Always require OTP verification
-                    }
-                    if settings.DEBUG:
-                        response_data['otp_code'] = otp
-                        response_data['debug_note'] = 'OTP shown in DEBUG mode only. Check backend/otp_code.txt file for production.'
-                    
-                    return Response(response_data, status=status.HTTP_200_OK)
-                except Exception as e:
-                    # Log error but don't fail login - email sending is not critical
-                    error_msg = str(e)
-                    import traceback
-                    logger.warning(f"Email send failed for {user.email}: {error_msg}")
-                    logger.debug(f"Email error traceback: {traceback.format_exc()}")
-                    print(f"[LOGIN WARNING] Email send failed but continuing: {error_msg}")
-                    # Don't delete OTP or fail login - user can request resend if needed
-                
-                # Return success response after email is sent
-                response_data = {
-                    'message': 'Verification code sent to your email',
-                    'email': user.email,  # Return email for OTP verification page
-                    'requires_otp': True
-                }
-                # In DEBUG mode, include OTP in response for development convenience
-                if settings.DEBUG and otp:
-                    response_data['otp_code'] = otp
-                    response_data['debug_note'] = 'OTP shown in DEBUG mode only. Check backend/otp_code.txt file for production.'
-                return Response(response_data, status=status.HTTP_200_OK)
             else:
                 # User doesn't exist or is inactive
                 email = serializer.validated_data.get('email', 'unknown')
@@ -316,10 +206,9 @@ class AuthViewSet(viewsets.ModelViewSet):
                 try:
                     ip_address = get_client_ip(request)
                     user_agent = get_user_agent(request)
-                    # Ensure user_agent is not None
                     user_agent_str = user_agent if user_agent else ''
                     SecurityLog.objects.create(
-                        user=None,  # User not authenticated, so null
+                        user=None,
                         event_type='failed_login',
                         ip_address=ip_address,
                         user_agent=user_agent_str,
@@ -330,7 +219,6 @@ class AuthViewSet(viewsets.ModelViewSet):
                     )
                 except Exception as log_error:
                     logger.error(f"Failed to log security event: {str(log_error)}", exc_info=True)
-                    # Don't fail login if logging fails - just log the error
                 
                 return Response(
                     {'error': 'Invalid credentials or account is inactive'}, 
