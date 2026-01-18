@@ -40,7 +40,13 @@ if DEBUG:
     except ImportError:
         pass
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
+# ALLOWED_HOSTS - Allow Render, localhost, and custom domains
+ALLOWED_HOSTS_LIST = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', '*.onrender.com'])
+ALLOWED_HOSTS = ALLOWED_HOSTS_LIST
+
+# Allow any onrender.com domain and custom domains via wildcard
+if not DEBUG:
+    ALLOWED_HOSTS = ALLOWED_HOSTS_LIST + ['*.onrender.com', 'localhost', '127.0.0.1']
 
 # Application definition
 INSTALLED_APPS = [
