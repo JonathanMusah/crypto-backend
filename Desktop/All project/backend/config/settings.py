@@ -22,16 +22,29 @@ SECRET_KEY = env('SECRET_KEY', default='django-insecure-change-in-production')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
 
-# Default cache configuration (will be overridden by local_settings in development)
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+# Cache configuration - Use Redis if available, fall back to local memory
+REDIS_URL = env('REDIS_URL', default=None)
+
+if REDIS_URL:
+    # Production: Use Redis from env (Render provides REDIS_URL)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'IGNORE_EXCEPTIONS': True,  # Don't crash if Redis is unavailable
+            }
         }
     }
-}
+else:
+    # Development/Render free tier: Use local memory cache (no Redis)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
 
 # Import local settings if in development mode
 if DEBUG:
@@ -241,27 +254,29 @@ DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@cryptoplatform.c
 # Frontend URL for password reset links
 FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
 
-# Celery Configuration
-CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+# Celery Configuration - Use Redis if available, otherwise use dummy backend
+CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=REDIS_URL or 'memory://')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default=REDIS_URL or 'cache+memory://')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_ALWAYS_EAGER = not REDIS_URL  # Run tasks synchronously if no Redis
 
-# Session Configuration (using Redis)
-SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-SESSION_CACHE_ALIAS = 'default'
+# Session Configuration
+if REDIS_URL:
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_CACHE_ALIAS = 'default'
+else:
+    SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Use database if no Redis
 
 # Django Channels Configuration
 ASGI_APPLICATION = 'config.asgi.application'
 
 # Channel Layers (for WebSocket support)
-# For development, use InMemoryChannelLayer
-# For production, use RedisChannelLayer
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',  # Use Redis in production
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',  # In-memory for free tier
     }
 }
 
