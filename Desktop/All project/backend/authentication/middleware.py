@@ -56,7 +56,13 @@ class IPBanMiddleware(MiddlewareMixin):
             
             # Check if IP is banned
             try:
-                if BannedIP.is_ip_banned(client_ip):
+                # Check if the table exists first
+                from django.db import connection
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT 1 FROM information_schema.tables WHERE table_name='banned_ips'")
+                    table_exists = cursor.fetchone()
+                
+                if table_exists and BannedIP.is_ip_banned(client_ip):
                     logger.warning(f"Blocked request from banned IP: {client_ip} to {request.path}")
                     return JsonResponse(
                         {
@@ -66,8 +72,8 @@ class IPBanMiddleware(MiddlewareMixin):
                         status=403
                     )
             except Exception as e:
-                # Don't block requests if IP check fails
-                logger.error(f"Error checking IP ban: {str(e)}", exc_info=True)
+                # Don't block requests if IP check fails (table might not exist yet)
+                logger.debug(f"IP ban check skipped: {str(e)}")
             
             return None
         except Exception as e:
