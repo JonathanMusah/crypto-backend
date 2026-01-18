@@ -4,6 +4,7 @@ Django settings for crypto platform project.
 import os
 from pathlib import Path
 import environ
+import dj_database_url
 
 env = environ.Env(
     DEBUG=(bool, False)
@@ -110,30 +111,27 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-        'OPTIONS': {
-            'timeout': 20,  # Increase timeout to 20 seconds
-            'check_same_thread': False,  # Allow multiple threads
-        },
-        'CONN_MAX_AGE': 0,  # Don't persist connections (helps with SQLite locking)
+# Database - Support DATABASE_URL for Render, fallback to SQLite
+if env('DATABASE_URL', default=None):
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=env('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
-
-# Uncomment below for PostgreSQL
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': env('DB_NAME', default='crypto_platform'),
-#         'USER': env('DB_USER', default='postgres'),
-#         'PASSWORD': env('DB_PASSWORD', default='postgres'),
-#         'HOST': env('DB_HOST', default='localhost'),
-#         'PORT': env('DB_PORT', default='5432'),
-#     }
-# }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 20,
+                'check_same_thread': False,
+            },
+            'CONN_MAX_AGE': 0,
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
