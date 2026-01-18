@@ -69,9 +69,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
         
-        # Generate username from email if not provided
+        # Generate unique username from email if not provided
         if not attrs.get('username'):
-            attrs['username'] = attrs['email'].split('@')[0]
+            base_username = attrs['email'].split('@')[0]
+            username = base_username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
+            attrs['username'] = username
         return attrs
 
     def create(self, validated_data):
