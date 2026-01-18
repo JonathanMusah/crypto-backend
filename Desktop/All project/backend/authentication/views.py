@@ -80,37 +80,46 @@ class AuthViewSet(viewsets.ModelViewSet):
         return super().get_authenticators()
     
 
-    @ratelimit(key='ip', rate='5/m', block=True)
+    # @ratelimit(key='ip', rate='5/m', block=True)  # Temporarily disabled for debugging
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def register(self, request):
-        """Register a new user and return JWT tokens"""
+        """Register a new user and return JWT tokens - DEBUG MODE"""
         try:
-            logger.info(f"Registration attempt from IP: {request.META.get('REMOTE_ADDR')}")
-            logger.info(f"Registration data: {request.data}")
+            logger.info(f"[DEBUG] Registration attempt from IP: {request.META.get('REMOTE_ADDR')}")
+            logger.info(f"[DEBUG] Registration data: {request.data}")
+            
+            # Basic validation first
+            if not request.data.get('email'):
+                return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+            if not request.data.get('password'):
+                return Response({'error': 'Password is required'}, status=status.HTTP_400_BAD_REQUEST)
+            if not request.data.get('password2'):
+                return Response({'error': 'Password confirmation is required'}, status=status.HTTP_400_BAD_REQUEST)
             
             serializer = RegisterSerializer(data=request.data)
             if serializer.is_valid():
                 try:
+                    logger.info(f"[DEBUG] Serializer validation passed")
                     user = serializer.save()
-                    logger.info(f"User created: {user.email}")
+                    logger.info(f"[DEBUG] User created: {user.email}")
                     
-                    # Create wallet for the user
-                    try:
-                        from wallets.models import Wallet
-                        wallet = Wallet.objects.create(user=user)
-                        logger.info(f"Wallet created for user: {user.email}")
-                    except Exception as wallet_error:
-                        logger.error(f"Failed to create wallet: {str(wallet_error)}", exc_info=True)
-                        # Continue registration even if wallet creation fails
+                    # Skip wallet creation for now to isolate issue
+                    # try:
+                    #     from wallets.models import Wallet
+                    #     wallet = Wallet.objects.create(user=user)
+                    #     logger.info(f"Wallet created for user: {user.email}")
+                    # except Exception as wallet_error:
+                    #     logger.error(f"Failed to create wallet: {str(wallet_error)}", exc_info=True)
                     
                     # Generate tokens
                     refresh = RefreshToken.for_user(user)
+                    logger.info(f"[DEBUG] Tokens generated for user: {user.email}")
                     
                     # Update user's last_seen immediately when they register (they're logged in)
                     user.last_seen = timezone.now()
                     user.save(update_fields=['last_seen'])
                     
-                    logger.info(f"User registered successfully: {user.email}")
+                    logger.info(f"[DEBUG] User registered successfully: {user.email}")
                     
                     response = Response({
                         'message': 'User registered successfully',
@@ -139,18 +148,18 @@ class AuthViewSet(viewsets.ModelViewSet):
                     
                     return response
                 except Exception as e:
-                    logger.error(f"Error during user creation: {str(e)}", exc_info=True)
+                    logger.error(f"[DEBUG] Error during user creation: {str(e)}", exc_info=True)
                     return Response(
                         {'error': f'Registration failed: {str(e)}'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
             else:
-                logger.warning(f"Registration validation failed: {serializer.errors}")
+                logger.warning(f"[DEBUG] Registration validation failed: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"Unexpected error in registration: {str(e)}", exc_info=True)
+            logger.error(f"[DEBUG] Unexpected error in registration: {str(e)}", exc_info=True)
             return Response(
-                {'error': 'An unexpected error occurred during registration'},
+                {'error': f'An unexpected error occurred during registration: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
