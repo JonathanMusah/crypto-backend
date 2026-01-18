@@ -10,7 +10,7 @@ import logging
 
 from .crypto_p2p_models import (
     CryptoListing,
-    CryptoTransaction,
+    CryptoP2PTransaction,
     CryptoTransactionAuditLog,
     CryptoTransactionDispute,
 )
@@ -89,7 +89,7 @@ class CryptoTransactionSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     
     class Meta:
-        model = CryptoTransaction
+        model = CryptoP2PTransaction
         fields = [
             'id', 'reference', 'listing', 'listing_reference',
             'buyer', 'buyer_email', 'seller', 'seller_email',
@@ -133,7 +133,7 @@ class CreateCryptoTransactionSerializer(serializers.ModelSerializer):
     buyer_payment_details = serializers.JSONField()
     
     class Meta:
-        model = CryptoTransaction
+        model = CryptoP2PTransaction
         fields = [
             'listing_id', 'amount_crypto',
             'buyer_wallet_address', 'buyer_payment_details'

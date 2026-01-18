@@ -18,7 +18,7 @@ import logging
 from wallets.models import Wallet
 from wallets.crypto_p2p_models import (
     CryptoListing,
-    CryptoTransaction,
+    CryptoP2PTransaction,
     CryptoTransactionAuditLog,
     CryptoTransactionDispute,
 )
@@ -195,7 +195,7 @@ class CryptoTransactionViewSet(viewsets.ModelViewSet):
     - GET /api/crypto/transactions/my_transactions/ - Get user's transactions
     """
     
-    queryset = CryptoTransaction.objects.all()
+    queryset = CryptoP2PTransaction.objects.all()
     serializer_class = CryptoTransactionSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -203,9 +203,9 @@ class CryptoTransactionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.is_staff:
-            return CryptoTransaction.objects.all()
-        return CryptoTransaction.objects.filter(
-            buyer=user) | CryptoTransaction.objects.filter(seller=user)
+            return CryptoP2PTransaction.objects.all()
+        return CryptoP2PTransaction.objects.filter(
+            buyer=user) | CryptoP2PTransaction.objects.filter(seller=user)
         ).distinct()
     
     def create(self, request, *args, **kwargs):
@@ -261,7 +261,7 @@ class CryptoTransactionViewSet(viewsets.ModelViewSet):
                 buyer_wallet.lock_cedis_to_escrow_atomic(amount_cedis)
                 
                 # Create transaction
-                crypto_transaction = CryptoTransaction.objects.create(
+                crypto_transaction = CryptoP2PTransaction.objects.create(
                     listing=listing,
                     buyer=request.user,
                     seller=seller,

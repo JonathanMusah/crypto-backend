@@ -218,7 +218,7 @@ class CryptoListing(models.Model):
         super().save(*args, **kwargs)
 
 
-class CryptoTransaction(models.Model):
+class CryptoP2PTransaction(models.Model):
     """
     Crypto P2P Transactions - True peer-to-peer trading with atomic operations
     Upgraded from simple buy/sell to full Binance-style 6-step transaction flow
@@ -496,7 +496,7 @@ class CryptoTransactionAuditLog(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     transaction = models.ForeignKey(
-        CryptoTransaction,
+        CryptoP2PTransaction,
         on_delete=models.CASCADE,
         related_name='audit_logs'
     )
@@ -550,7 +550,7 @@ class CryptoTransactionDispute(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     transaction = models.ForeignKey(
-        CryptoTransaction,
+        CryptoP2PTransaction,
         on_delete=models.CASCADE,
         related_name='disputes'
     )

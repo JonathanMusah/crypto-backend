@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.db.models import Q
 from wallets.crypto_p2p_models import (
     CryptoListing,
-    CryptoTransaction,
+    CryptoP2PTransaction,
     CryptoTransactionAuditLog,
     CryptoTransactionDispute,
 )
@@ -171,7 +171,7 @@ class CryptoListingAdmin(admin.ModelAdmin):
     pause_listings.short_description = 'Pause selected listings'
 
 
-@admin.register(CryptoTransaction)
+@admin.register(CryptoP2PTransaction)
 class CryptoTransactionAdmin(admin.ModelAdmin):
     """Admin interface for Crypto Transactions"""
     
