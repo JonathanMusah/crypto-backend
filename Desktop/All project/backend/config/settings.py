@@ -235,12 +235,49 @@ SIMPLE_JWT = {
     'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
-# CORS Settings
+# CORS Settings - Allow testing and development origins
 CORS_ALLOWED_ORIGINS = env.list(
     'CORS_ALLOWED_ORIGINS',
-    default=['http://localhost:3000', 'http://127.0.0.1:3000']
+    default=[
+        'http://localhost:3000', 
+        'http://127.0.0.1:3000',
+        'http://localhost:5500',  # Live Server extension
+        'http://127.0.0.1:5500',  # Live Server extension
+        'http://localhost:8080',  # Common dev ports
+        'http://127.0.0.1:8080',
+        'http://localhost:19006', # Expo
+        'http://127.0.0.1:19006',
+        'exp://localhost:19000',  # Expo
+        'exp://127.0.0.1:19000',
+    ]
 )
 CORS_ALLOW_CREDENTIALS = True
+
+# For development, also allow all origins from localhost and 127.0.0.1
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+
+# Additional CORS headers for development
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
 
 # Email Configuration
 EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
