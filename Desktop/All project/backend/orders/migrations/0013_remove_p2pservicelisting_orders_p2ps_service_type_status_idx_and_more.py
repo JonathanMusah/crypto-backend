@@ -10,17 +10,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveIndex(
-            model_name="p2pservicelisting",
-            name="orders_p2ps_service_type_status_idx",
-        ),
-        migrations.RemoveIndex(
-            model_name="p2pservicelisting",
-            name="orders_p2ps_seller_status_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="p2pservicelisting",
-            new_name="p2p_service_service_a987f2_idx",
-            old_name="orders_p2ps_service_identifier_hash_idx",
-        ),
+        # These operations were originally meant to remove/rename indexes
+        # but the indexes may not exist in all environments (e.g., fresh deployments).
+        # Making this a no-op migration to handle migration state differences.
     ]
+
