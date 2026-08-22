@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@600;700&family=Work+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+:root {
+  --emerald-950: #081b13;
+  --emerald-900: #0f2a1f;
+  --emerald-800: #153826;
+  --coral-600: #e8542f;
+  --coral-500: #ff6b4a;
+  --marigold-400: #ffc145;
+  --paper-100: #f6eede;
+  --ink-900: #191712;
+}
+
+@theme inline {
+  --color-emerald-950: var(--emerald-950);
+  --color-emerald-900: var(--emerald-900);
+  --color-emerald-800: var(--emerald-800);
+  --color-coral-600: var(--coral-600);
+  --color-coral-500: var(--coral-500);
+  --color-marigold-400: var(--marigold-400);
+  --color-paper-100: var(--paper-100);
+  --color-ink-900: var(--ink-900);
+  --font-display: "Anton", sans-serif;
+  --font-script: "Caveat", cursive;
+  --font-body: "Work Sans", sans-serif;
+}
+
+body {
+  background: var(--paper-100);
+  color: var(--ink-900);
+  font-family: var(--font-body);
+}
+
+.font-display { font-family: var(--font-display); }
+.font-script { font-family: var(--font-script); }
+
+.grain { position: relative; }
+.grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(0,0,0,.035) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 22s linear infinite;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+}
